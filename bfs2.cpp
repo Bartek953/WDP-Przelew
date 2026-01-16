@@ -63,7 +63,7 @@ bool full_empty_check(){
 }
 
 struct Table_Visited {
-    vector<bool> visited;
+    vector<char> visited;
     vector<long long> products;
     Table_Visited(){
         products.resize(n, 1);
@@ -87,7 +87,7 @@ struct Table_Visited {
         return old_h;
     }
     inline void insert(long long h){
-        visited[h] = true;
+        visited[h]++;
     }
     inline int count(long long h) const {
         return visited[h];
@@ -100,7 +100,7 @@ struct State {
     int dist;
 };
 
-inline void add_moves(const State& state, queue<State>& Q, const Table_Visited& visited){
+inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visited){
     State new_state = state;
     new_state.dist++;
 
@@ -111,6 +111,7 @@ inline void add_moves(const State& state, queue<State>& Q, const Table_Visited& 
             new_state.hash1 = visited.get_h(state.hash1, i, state.vec, new_state.vec);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
+                visited.insert(new_state.hash1);
             }
             new_state.vec[i] = state.vec[i];
             new_state.hash1 = state.hash1;
@@ -121,6 +122,7 @@ inline void add_moves(const State& state, queue<State>& Q, const Table_Visited& 
             new_state.hash1 = visited.get_h(state.hash1, i, state.vec, new_state.vec);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
+                visited.insert(new_state.hash1);
             }
             new_state.vec[i] = state.vec[i];
             new_state.hash1 = state.hash1;
@@ -133,6 +135,7 @@ inline void add_moves(const State& state, queue<State>& Q, const Table_Visited& 
             new_state.hash1 = visited.get_h(state.hash1, i, j, state.vec, new_state.vec);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
+                visited.insert(new_state.hash1);
             }
             new_state.vec[i] = state.vec[i];
             new_state.vec[j] = state.vec[j];
@@ -151,7 +154,7 @@ int bfs(){
     while(!Q.empty()){
         State state = Q.front();
         Q.pop();
-        if(visited.count(state.hash1) > 0)continue;
+        if(visited.count(state.hash1) > 1)continue;
         visited.insert(state.hash1);
 
         if(state.vec == Y)return state.dist;
