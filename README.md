@@ -1,0 +1,1 @@
+bfs3.cpp is currently the fastest version

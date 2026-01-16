@@ -1,0 +1,296 @@
+#include <vector>
+#include <algorithm>
+#include <iostream>
+#include <assert.h>
+#include <unordered_set>
+#include <queue>
+using namespace std;
+
+int n;
+vector<int> X;
+vector<int> Y;
+vector<int> L, R;
+
+const int vec_alloc_lim = 6e8;
+
+void read_data(){
+    cin >> n;
+    assert(n >= 0);
+
+    vector<pair<int, int>> XY(n, {0, 0});
+    int x, y;
+    for(int i = 0; i < n; i++){
+        cin >> x >> y;
+        assert(0 <= y && y <= x);
+        XY[i] = {x, y};
+    }
+    sort(XY.begin(), XY.end());
+
+    X.resize(n);
+    Y.resize(n);
+    for(int i = 0; i < n; i++){
+        X[i] = XY[i].first;
+        Y[i] = XY[i].second;
+    }
+
+    L.resize(n);
+    R.resize(n);
+    L[0] = 0;
+    for(int i = 1; i < n; i++){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1]){
+            L[i] = L[i - 1];
+        }
+        else L[i] = i;
+    }
+    R[n - 1] = n - 1;
+    for(int i = n - 2; i >= 0; i--){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1]){
+            R[i] = R[i + 1];
+        }
+        else R[i] = i;
+    }
+}
+inline int nwd(int a, int b){
+    if(a < b)swap(a, b);
+    while(b != 0){
+        a = a % b;
+        swap(a, b);
+    }
+    return a;
+}
+bool nwd_check(){
+    assert(n > 0);
+    int x_nwd = 0;
+    for(int i = 0; i < n; i++){
+        x_nwd = nwd(x_nwd, X[i]);
+    }
+    for(int i = 0; i < n; i++){
+        if(Y[i] % x_nwd != 0)return false;
+    }
+    for(int i = 0; i < n; i++){
+        X[i] /= x_nwd;
+        Y[i] /= x_nwd;
+    }
+    return true;
+}
+bool full_empty_check(){
+    for(int i = 0; i < n; i++){
+        if(Y[i] == 0 || Y[i] == X[i])return true;
+    }
+    return false;
+}
+
+struct Table_Visited {
+    vector<char> visited;
+    vector<long long> products;
+    Table_Visited(){
+        products.resize(n, 1);
+        for(int i = 1; i < n; i++){
+            products[i] = products[i-1] * (X[i - 1] + 1);
+        }
+        int size = 1;
+        for(int i = 0; i < n; i++){
+            size *= (X[i] + 1);
+            assert(size < vec_alloc_lim);
+        }
+        visited.resize(size + 1, 0);
+    }
+    //hash = z1 + (x1+1)*z2 + ... + (x1+1)****(x(n-1)+1)zn
+    inline long long get_h(long long old_h, int i, int old_val, int new_val) const {
+        return old_h + (new_val - old_val) * products[i];
+    }
+    inline long long get_h(long long old_h, int i, int j, int old_i_val, int new_i_val, int old_j_val, int new_j_val) const {
+        old_h = get_h(old_h, i, old_i_val, new_i_val);
+        old_h = get_h(old_h, j, old_j_val, new_j_val);
+        return old_h;
+    }
+    inline void insert(long long h){
+        visited[h]++;
+    }
+    inline int count(long long h) const {
+        return visited[h];
+    }
+};
+
+struct State {
+    long long hash1;
+    int dist;
+    const Table_Visited& visited;
+    inline int get(int i) const {
+        if(i == n - 1) return (hash1 / visited.products[i]);
+        return (hash1 / visited.products[i]) % (X[i] + 1);
+    }
+    inline void change(int i, int val){
+        hash1 = visited.get_h(hash1, i, get(i), val);
+    }
+    inline void swap_ind(int i, int j){
+        int val = get(i);
+        change(i, get(j));
+        change(j, val);
+    }
+};
+
+inline long long get_h(long long old_h, int i, const State& old_state, const State& new_state) {
+    return old_h + (new_state.get(i) - old_state.get(i)) * old_state.visited.products[i];
+}
+inline long long get_h(long long old_h, int i, int j, const State& old_state, const State& new_state){
+    old_h = get_h(old_h, i, old_state, new_state);
+    old_h = get_h(old_h, j, old_state, new_state);
+    return old_h;
+}
+
+inline void swap_in_order(int i, int j, State& state){
+    state.swap_ind(i, j);
+}
+
+inline pair<int, int> restore_order(int i, State& state,const Table_Visited& visited){
+    int start = i;
+    while(true){
+        if(i < n - 1 && X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.get(i) > state.get(i + 1)){
+            swap_in_order(i, i + 1, state);
+            i++;
+            continue;
+        }
+        if(i > 0 && X[i - 1] == X[i] && Y[i - 1] == Y[i] && state.get(i - 1) > state.get(i)){
+            swap_in_order(i - 1, i, state);
+            i--;
+            continue;
+        }
+        break;
+    }
+    return {min(start, i), max(start, i)};
+}
+
+inline pair<int, int> restore_order(int ind1, int ind2, State& state,const Table_Visited& visited){
+    int first = L[ind1];
+    int last = R[ind2];
+    for(int i = first; i < last; i++){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.get(i) > state.get(i + 1)){
+            swap_in_order(i, i + 1, state);
+        }
+    }
+    for(int i = last; i > first; i--){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1] && state.get(i - 1) > state.get(i)){
+            swap_in_order(i - 1, i, state);
+        }
+    }
+
+    for(int i = first; i < last - 1; i++){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.get(i) > state.get(i + 1)){
+            swap_in_order(i, i + 1, state);
+        }
+    }
+    for(int i = last; i > first; i--){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1] && state.get(i - 1) > state.get(i)){
+            swap_in_order(i - 1, i, state);
+        }
+    }
+    return {first, last};
+}
+
+inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visited){
+    State new_state = state;
+    new_state.dist++;
+
+    for(int i = 0; i < n; i++){
+        //1. Wylanie wody
+        if(state.get(i) != 0){
+            new_state.change(i, 0);
+            new_state.hash1 = get_h(state.hash1, i, state, new_state);
+            auto [first, last] = restore_order(i, new_state, visited);
+            if(visited.count(new_state.hash1) == 0){
+                Q.push(new_state);
+                visited.insert(new_state.hash1);
+            }
+            new_state.hash1 = state.hash1;
+            //new_state.vec[i] = state.vec[i];
+            //new_state.hash1 = state.hash1;
+        }
+        //2. Wylanie wody
+        if(state.get(i) != X[i]){
+            new_state.change(i, X[i]);
+            new_state.hash1 = get_h(state.hash1, i, state, new_state);
+            auto [first, last] = restore_order(i, new_state, visited);
+            if(visited.count(new_state.hash1) == 0){
+                Q.push(new_state);
+                visited.insert(new_state.hash1);
+            }
+            new_state.hash1 = state.hash1;
+            //new_state.vec[i] = state.vec[i];
+            //new_state.hash1 = state.hash1;
+        }
+        //3. Przelewanki z i do j
+        for(int j = 0; j < n; j++){
+            if(i == j)continue;
+            new_state.change(j, min(X[j], state.get(i) + state.get(j)));
+            new_state.change(i, state.get(i) + state.get(j) - new_state.get(j));
+            new_state.hash1 = get_h(state.hash1, i, j, state, new_state);
+            int first1, last1, first2, last2;
+            if(X[i] != X[j] || Y[i] != Y[j]){
+                std::tie(first1, last1) = restore_order(i, new_state, visited);
+                std::tie(first2, last2) = restore_order(j, new_state, visited);
+            }
+            else {
+                std::tie(first1, last1) = restore_order(i, j, new_state, visited);
+                std::tie(first2, last2) = {first1, last1};
+            }
+            if(visited.count(new_state.hash1) == 0){
+                Q.push(new_state);
+                visited.insert(new_state.hash1);
+            }
+            new_state.hash1 = state.hash1;
+            // new_state.vec[i] = state.vec[i];
+            // new_state.vec[j] = state.vec[j];
+            // new_state.hash1 = state.hash1;
+        }
+    }
+}
+
+int bfs(){
+    queue<State> Q;
+    Table_Visited visited;
+
+    State start = {0, 0, visited};
+    Q.push(start);
+
+    while(!Q.empty()){
+        State state = Q.front();
+        Q.pop();
+        if(visited.count(state.hash1) > 1)continue;
+        visited.insert(state.hash1);
+
+        bool destination = true;
+        for(int i = 0; i < n; i++){
+            if(state.get(i) != Y[i]){
+                destination = false;
+                break;
+            }
+        }
+        if(destination){
+            return state.dist;
+        }
+
+        add_moves(state, Q, visited);
+    }
+    return -1;
+}
+
+
+
+int solve(){
+    if(n == 0)return 0;
+    if(!nwd_check() || !full_empty_check())return -1;
+    return bfs();
+}
+
+int main(){
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+
+    read_data();
+
+    //cout << solve() << '\n';
+    cout << solve() << '\n';
+
+    return 0;
+}
