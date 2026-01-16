@@ -9,6 +9,7 @@ using namespace std;
 int n;
 vector<int> X;
 vector<int> Y;
+vector<int> L, R;
 
 const int vec_alloc_lim = 6e8;
 
@@ -30,6 +31,23 @@ void read_data(){
     for(int i = 0; i < n; i++){
         X[i] = XY[i].first;
         Y[i] = XY[i].second;
+    }
+
+    L.resize(n);
+    R.resize(n);
+    L[0] = 0;
+    for(int i = 1; i < n; i++){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1]){
+            L[i] = L[i - 1];
+        }
+        else L[i] = i;
+    }
+    R[n - 1] = n - 1;
+    for(int i = n - 2; i >= 0; i--){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1]){
+            R[i] = R[i + 1];
+        }
+        else R[i] = i;
     }
 }
 inline int nwd(int a, int b){
@@ -73,8 +91,8 @@ struct Table_Visited {
         int size = 1;
         for(int i = 0; i < n; i++){
             size *= (X[i] + 1);
+            assert(size < vec_alloc_lim);
         }
-        assert(size < vec_alloc_lim);
         visited.resize(size + 1, 0);
     }
     //hash = z1 + (x1+1)*z2 + ... + (x1+1)****(x(n-1)+1)zn
@@ -137,6 +155,33 @@ inline void restore_old_state(int i, int j, const State& old_state, State& new_s
     new_state.hash1 = old_state.hash1;
 }
 
+inline pair<int, int> restore_order(int ind1, int ind2, State& state,const Table_Visited& visited){
+    int first = L[ind1];
+    int last = R[ind2];
+    for(int i = first; i < last; i++){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.vec[i] > state.vec[i + 1]){
+            swap_in_order(i, i + 1, state.vec, state.hash1, visited);
+        }
+    }
+    for(int i = last; i > first; i--){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1] && state.vec[i - 1] > state.vec[i]){
+            swap_in_order(i - 1, i, state.vec, state.hash1, visited);
+        }
+    }
+
+    for(int i = first; i < last - 1; i++){
+        if(X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.vec[i] > state.vec[i + 1]){
+            swap_in_order(i, i + 1, state.vec, state.hash1, visited);
+        }
+    }
+    for(int i = last; i > first; i--){
+        if(X[i] == X[i - 1] && Y[i] == Y[i - 1] && state.vec[i - 1] > state.vec[i]){
+            swap_in_order(i - 1, i, state.vec, state.hash1, visited);
+        }
+    }
+    return {first, last};
+}
+
 inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visited){
     State new_state = state;
     new_state.dist++;
@@ -174,8 +219,15 @@ inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visite
             new_state.vec[j] = min(X[j], state.vec[i] + state.vec[j]);
             new_state.vec[i] = state.vec[i] + state.vec[j] - new_state.vec[j];
             new_state.hash1 = visited.get_h(state.hash1, i, j, state.vec, new_state.vec);
-            auto [first1, last1] = restore_order(i, new_state, visited);
-            auto [first2, last2] = restore_order(j, new_state, visited);
+            int first1, last1, first2, last2;
+            if(X[i] != X[j] || Y[i] != Y[j]){
+                std::tie(first1, last1) = restore_order(i, new_state, visited);
+                std::tie(first2, last2) = restore_order(j, new_state, visited);
+            }
+            else {
+                std::tie(first1, last1) = restore_order(i, j, new_state, visited);
+                std::tie(first2, last2) = {first1, last1};
+            }
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
                 visited.insert(new_state.hash1);
