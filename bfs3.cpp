@@ -108,6 +108,35 @@ struct State {
     int dist;
 };
 
+inline void swap_in_order(int i, int j, vector<int>& state, long long& h, const Table_Visited& visited){
+    h = visited.get_h(h, i, j, state[i], state[j], state[j], state[i]);
+    swap(state[i], state[j]);
+}
+
+inline pair<int, int> restore_order(int i, State& state,const Table_Visited& visited){
+    int start = i;
+    while(true){
+        if(i < n - 1 && X[i] == X[i + 1] && Y[i] == Y[i + 1] && state.vec[i] > state.vec[i + 1]){
+            swap_in_order(i, i + 1, state.vec, state.hash1, visited);
+            i++;
+            continue;
+        }
+        if(i > 0 && X[i - 1] == X[i] && Y[i - 1] == Y[i] && state.vec[i - 1] > state.vec[i]){
+            swap_in_order(i - 1, i, state.vec, state.hash1, visited);
+            i--;
+            continue;
+        }
+        break;
+    }
+    return {min(start, i), max(start, i)};
+}
+inline void restore_old_state(int i, int j, const State& old_state, State& new_state){
+    for(int k = i; k <=j; k++){
+        new_state.vec[k] = old_state.vec[k];
+    }
+    new_state.hash1 = old_state.hash1;
+}
+
 inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visited){
     State new_state = state;
     new_state.dist++;
@@ -117,23 +146,27 @@ inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visite
         if(state.vec[i] != 0){
             new_state.vec[i] = 0;
             new_state.hash1 = visited.get_h(state.hash1, i, state.vec, new_state.vec);
+            auto [first, last] = restore_order(i, new_state, visited);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
                 visited.insert(new_state.hash1);
             }
-            new_state.vec[i] = state.vec[i];
-            new_state.hash1 = state.hash1;
+            restore_old_state(first, last, state, new_state);
+            //new_state.vec[i] = state.vec[i];
+            //new_state.hash1 = state.hash1;
         }
         //2. Wylanie wody
         if(state.vec[i] != X[i]){
             new_state.vec[i] = X[i];
             new_state.hash1 = visited.get_h(state.hash1, i, state.vec, new_state.vec);
+            auto [first, last] = restore_order(i, new_state, visited);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
                 visited.insert(new_state.hash1);
             }
-            new_state.vec[i] = state.vec[i];
-            new_state.hash1 = state.hash1;
+            restore_old_state(first, last, state, new_state);
+            //new_state.vec[i] = state.vec[i];
+            //new_state.hash1 = state.hash1;
         }
         //3. Przelewanki z i do j
         for(int j = 0; j < n; j++){
@@ -141,13 +174,17 @@ inline void add_moves(const State& state, queue<State>& Q, Table_Visited& visite
             new_state.vec[j] = min(X[j], state.vec[i] + state.vec[j]);
             new_state.vec[i] = state.vec[i] + state.vec[j] - new_state.vec[j];
             new_state.hash1 = visited.get_h(state.hash1, i, j, state.vec, new_state.vec);
+            auto [first1, last1] = restore_order(i, new_state, visited);
+            auto [first2, last2] = restore_order(j, new_state, visited);
             if(visited.count(new_state.hash1) == 0){
                 Q.push(new_state);
                 visited.insert(new_state.hash1);
             }
-            new_state.vec[i] = state.vec[i];
-            new_state.vec[j] = state.vec[j];
-            new_state.hash1 = state.hash1;
+            restore_old_state(first1, last1, state, new_state);
+            restore_old_state(first2, last2, state, new_state);
+            // new_state.vec[i] = state.vec[i];
+            // new_state.vec[j] = state.vec[j];
+            // new_state.hash1 = state.hash1;
         }
     }
 }
