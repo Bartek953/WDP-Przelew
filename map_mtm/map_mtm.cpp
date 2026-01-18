@@ -77,13 +77,13 @@ public:
         L[0] = 0;
         R[n - 1] = n - 1;
         for(int i = 1; i < n; i++){
-            if(X[i] == X[i - 1] && Y[i] == Y[i - 1])
+            if(X[i] == X[i - 1])
                 L[i] = L[i - 1];
             else
                 L[i] = i;
         }
         for(int i = n - 2; i >= 0; i--){
-            if(X[i] == X[i + 1] && Y[i] == Y[i + 1])
+            if(X[i] == X[i + 1])
                 R[i] = R[i + 1];
             else
                 R[i] = i;
@@ -111,11 +111,15 @@ public:
         if(L[i] < R[i])
             sort_state(L[i], R[i], new_state, 1);
             //sort(new_state.begin() + L[i], new_state.begin() + R[i] + 1);
+        int back_dist = visited.get_dist(new_state, !forward);
+        if(back_dist != -1 && back_dist < INF){
+            ANS = min(ANS, back_dist + dist);
+        }
         if(visited.get_dist(new_state, forward) == -1){
             if(forward)forward_Q.push({new_state, dist});
             else backward_Q.push({new_state, dist});
 
-            visited.insert(new_state, INF, forward);
+            visited.insert(new_state, dist, forward);
         }
         restore_old_state(L[i], R[i], new_state, state);
     }
@@ -132,11 +136,15 @@ public:
                 sort_state(L[j], R[j], new_state, 1);
                 //sort(new_state.begin() + L[j], new_state.begin() + R[j] + 1);
         }
+        int back_dist = visited.get_dist(new_state, !forward);
+        if(back_dist != -1 && back_dist < INF){
+            ANS = min(ANS, back_dist + dist);
+        }
         if(visited.get_dist(new_state, forward) == -1){
             if(forward)forward_Q.push({new_state, dist});
             else backward_Q.push({new_state, dist});
 
-            visited.insert(new_state, INF, forward);
+            visited.insert(new_state, dist, forward);
         }
         if(L[i] == L[j]){
             restore_old_state(L[i], R[i], new_state, state);
@@ -147,8 +155,8 @@ public:
         }
     }
 
-    inline void propagate_forwards(const vector<int>& state, const int dist){
-        vector<int> new_state = state;
+    inline void propagate_forwards(vector<int>& new_state, const vector<int>& state, const int dist){
+        new_state = state;
         
         for(int i = 0; i < n; i++){
             //1. Filling the glass
@@ -170,8 +178,8 @@ public:
              }
         }
     }
-    inline void propagate_backwards(const vector<int>& state, const int dist){
-        vector<int> new_state = state;
+    inline void propagate_backwards(vector<int>& new_state, const vector<int>& state, const int dist){
+        new_state = state;
         for(int i = 0; i < n; i++){
             if(state[i] == 0){
                 //Refilling the glass
@@ -209,7 +217,7 @@ public:
         visited.forward_insert(vector<int>(n, 0), 0);
         visited.backward_insert(Y, 0);
 
-        vector<int> state(n, 0);
+        vector<int> state(n, 0), new_state(n, 0);
         int dist;
 
         int old_dist1 = 0, old_dist2 = 0;
@@ -218,8 +226,9 @@ public:
 
         while(!forward_Q.empty()){ 
             //after forward_Q is empty, we have been it all important states
-            if(back_size < front_size && !backward_Q.empty()){
+            if(ANS >= INF && back_size < front_size && !backward_Q.empty()){
                 back_size++;
+                //if(back_size > 1000)front_size = 0;
                 state = backward_Q.front().first;
                 dist = backward_Q.front().second;
                 if(dist != old_dist1 && ANS < INF){
@@ -228,7 +237,7 @@ public:
                 old_dist1 = dist;
                 backward_Q.pop();
 
-                visited.backward_insert(state, dist);
+                //visited.backward_insert(state, dist);
 
                 // cout << "BACKWARD: " << dist << '\n';
                 // for(int i = 0; i < n; i++)cout << state[i] << ' ';
@@ -238,10 +247,11 @@ public:
                 if(forward_dist != -1 && forward_dist < INF){
                     ANS = min(ANS, dist + forward_dist);
                 }
-                propagate_backwards(state, dist);
+                propagate_backwards(new_state, state, dist);
             }
             else {
                 front_size++;
+                //if(front_size > 2000)back_size = 0;
                 state = forward_Q.front().first;
                 dist = forward_Q.front().second;
                 if(dist != old_dist2 && ANS < INF){
@@ -250,7 +260,7 @@ public:
                 old_dist2 = dist;
                 forward_Q.pop();
 
-                visited.forward_insert(state, dist);
+                //visited.forward_insert(state, dist);
 
                 // cout << "FORWARD: " << dist << '\n';
                 // for(int i = 0; i < n; i++)cout << state[i] << ' ';
@@ -262,7 +272,7 @@ public:
                 if(backward_dist != -1 && backward_dist < INF){
                     ANS = min(ANS, dist + backward_dist);
                 }
-                propagate_forwards(state, dist);
+                propagate_forwards(new_state, state, dist);
             }
         }
         return ANS >= INF ? -1 : ANS;

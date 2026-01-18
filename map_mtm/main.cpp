@@ -23,15 +23,16 @@ inline void read_data(int &n, vector<int>& X, vector<int>& Y){
     cin >> n;
     assert(0 <= n);
 
-    X.resize(n, 0);
-    Y.resize(n, 0);
     int x, y;
     for(int i = 0; i < n; i++){
         cin >> x >> y;
         assert(0 <= y && y <= x);
-        X[i] = x;
-        Y[i] = y;
+        if(x != 0){
+            X.push_back(x);
+            Y.push_back(y);
+        }
     }
+    n = X.size();
     sort_XY(n, X, Y);
 }
 inline int nwd(int a, int b){
