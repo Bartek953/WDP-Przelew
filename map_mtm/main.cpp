@@ -7,6 +7,24 @@ using namespace std;
 
 const int TABLE_SIZE_LIM = 2e8;
 
+int simple_check(int n, vector<int>& X, vector<int>& Y){
+    bool simple_case = true;
+    int res = 0;
+    for(int i = 0; i < n; i++){
+        if(Y[i] == 0)continue;
+        if(Y[i] == X[i]){
+            res++;
+            continue;
+        }
+        simple_case = false;
+        break;
+    }
+    if(simple_case){
+        return res;
+    }
+    return -1;
+}
+
 //bucket sort
 inline void sort_XY(int &n, vector<int>& X, vector<int>& Y){
     vector<pair<int, int>> XY(n, {0, 0});
@@ -68,6 +86,9 @@ inline bool check_conditions(int n, vector<int>& X, vector<int>& Y){
 inline int solve(int n, vector<int>& X, vector<int>& Y){
     if(n == 0)return 0;
     if(!check_conditions(n, X, Y))return -1;
+
+    int simple_res = simple_check(n, X, Y);
+    if(simple_res != -1)return simple_res;
 
     map_mtm mtm(n, X, Y);
     return mtm.get_result();

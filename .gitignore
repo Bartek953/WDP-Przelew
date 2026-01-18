@@ -9,7 +9,6 @@ a.out
 compile_tymek.sh
 map_mtm2/
 opcje
-opcjeCpp
 przelewanka-testy/
 przelewanka/
 test3.out
@@ -19,3 +18,9 @@ test6.out
 test7.out
 test8.out
 test9.out
+tymek_tests/
+opcjeCpp
+test26.out
+test27.out
+test28.out
+test2short.out
