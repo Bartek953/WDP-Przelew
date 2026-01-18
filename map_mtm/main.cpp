@@ -50,7 +50,7 @@ inline void read_data(int &n, vector<int>& X, vector<int>& Y){
             Y.push_back(y);
         }
     }
-    n = X.size();
+    n = (int)X.size();
     sort_XY(n, X, Y);
 }
 inline int nwd(int a, int b){

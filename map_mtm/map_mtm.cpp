@@ -70,7 +70,7 @@ class map_mtm {
     vector<int>& X, Y;
     int n;
 public:
-    map_mtm(int nn, vector<int>& XX, vector<int>& YY) : n(nn), X(XX), Y(YY) {
+    map_mtm(int nn, vector<int>& XX, vector<int>& YY) : X(XX), Y(YY), n(nn) {
         //calculating left and right ends of each bucket
         L.resize(n, 0);
         R.resize(n, 0);
