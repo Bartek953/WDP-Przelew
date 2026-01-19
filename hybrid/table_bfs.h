@@ -96,14 +96,14 @@ struct table_bfs {
         R.resize(n, 0);
         L[0] = 0;
         for(int i = 1; i < n; i++){
-            if(X[i - 1] == X[i] && Y[i - 1] == Y[i]){
+            if(X[i - 1] == X[i]){ //  && Y[i - 1] == Y[i]
                 L[i] = L[i - 1];
             }
             else L[i] = i;
         }
         R[n - 1] = n - 1;
         for(int i = n - 2; i >= 0; i--){
-            if(X[i] == X[i + 1] && Y[i] == Y[i + 1]){
+            if(X[i] == X[i + 1]){ // && Y[i] == Y[i + 1]
                 R[i] = R[i + 1];
             }
             else R[i] = i;

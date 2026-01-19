@@ -5,7 +5,25 @@
 #include "table_bfs.h"
 using namespace std;
 
-const int TABLE_SIZE_LIM = 2e8;
+const int TABLE_SIZE_LIM = 8e8;
+
+int simple_check(int n, vector<int>& X, vector<int>& Y){
+    bool simple_case = true;
+    int res = 0;
+    for(int i = 0; i < n; i++){
+        if(Y[i] == 0)continue;
+        if(Y[i] == X[i]){
+            res++;
+            continue;
+        }
+        simple_case = false;
+        break;
+    }
+    if(simple_case){
+        return res;
+    }
+    return -1;
+}
 
 //bucket sort
 inline void sort_XY(int &n, vector<int>& X, vector<int>& Y){
@@ -77,13 +95,11 @@ inline int solve(int n, vector<int>& X, vector<int>& Y){
             break;
         }
     }
-    if(can_alloc_table){
-        table_bfs bfs(n, X, Y);
-        return bfs.get_result();
-    }
-    else {
-        assert(false);
-    }
+    int simple_res = simple_check(n, X, Y);
+    if(simple_res != -1)return simple_res;
+    
+    table_bfs bfs(n, X, Y);
+    return bfs.get_result();
 }
 int main(){
     ios::sync_with_stdio(0);

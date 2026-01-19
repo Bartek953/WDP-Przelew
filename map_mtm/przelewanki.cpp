@@ -1,10 +1,13 @@
-#pragma once
+#include <iostream>
+#include <assert.h>
+#include <algorithm>
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
 #include <utility>
 #include <queue>
 #include <iostream>
+
 using namespace std;
 
 //By bucket I will understand a block of indexes,
@@ -13,10 +16,6 @@ using namespace std;
 //by sorting elements in buckets
 //for small buckets we dont want to do that (it increases constant)
 
-//I will use meet in the middle for smaller products of y
-//for big products of y it might be better to switch to normal bfs
-
-const long long mtm_profitable_product_lim = 1e9;
 const int INF = 2e9;
 
 struct hash_vector {
@@ -63,6 +62,12 @@ struct map_visited {
     }
 };
 
+//Im using meet in the middle algorithm
+//that means Im doing bfs's from start and end at the same time
+//This becomes much more efficient for large depths
+//even considering fact, that going backwards is more expensive than forwards
+//I can optimize it by going from the "smaller side"
+
 class map_mtm {
     map_visited visited;
     queue<pair<vector<int>, int>> forward_Q;
@@ -78,7 +83,8 @@ public:
         R.resize(n, 0);
         L[0] = 0;
         R[n - 1] = n - 1;
-        unsigned long long x_product = 1;
+
+        //calculation of L, R - left and right end of each bucket
         for(int i = 1; i < n; i++){
             if(X[i] == X[i - 1])
                 L[i] = L[i - 1];
@@ -91,17 +97,13 @@ public:
             else
                 R[i] = i;
         }
-
-        for(int i = 0; i < n; i++){
-            x_product *= X[i];
-            if(x_product > mtm_profitable_product_lim)break;
-        }
-        if(x_product > mtm_profitable_product_lim || n * x_product > mtm_profitable_product_lim || n * n * x_product > mtm_profitable_product_lim){
-            do_mtm = false;
-        }
     }
     int ANS = INF;
 
+    //for bucket sort
+    //im using bubble sort, because i only need to do 2 to 4 forloops
+    //(only one or two elements are not sorted)
+    //and it will be more efficient than sort() function
     inline void sort_state(int l, int r, vector<int>& state, int repeat){
         while(repeat--){
             for(int i = l; i < r; i++){
@@ -121,10 +123,10 @@ public:
     inline void push_to_queue(const vector<int>& state, vector<int>& new_state, int dist, int i, bool forward){
         if(L[i] < R[i])
             sort_state(L[i], R[i], new_state, 1);
-            //sort(new_state.begin() + L[i], new_state.begin() + R[i] + 1);
         int back_dist = visited.get_dist(new_state, !forward);
         if(back_dist != -1 && back_dist < INF){
             ANS = min(ANS, back_dist + dist);
+            //Im checking whetever connection exist
         }
         if(visited.get_dist(new_state, forward) == -1){
             if(forward)forward_Q.push({new_state, dist});
@@ -137,19 +139,17 @@ public:
     inline void push_to_queue(const vector<int>& state, vector<int>& new_state, int dist, int i, int j, bool forward){
         if(L[i] == L[j]){
             sort_state(L[i], R[i], new_state, 2);
-            //sort(new_state.begin() + L[i], new_state.begin() + R[i] + 1);
         }
         else {
             if(L[i] < R[i])
                 sort_state(L[i], R[i], new_state, 1);
-                //sort(new_state.begin() + L[i], new_state.begin() + R[i] + 1);
             if(L[j] < R[j])
                 sort_state(L[j], R[j], new_state, 1);
-                //sort(new_state.begin() + L[j], new_state.begin() + R[j] + 1);
         }
         int back_dist = visited.get_dist(new_state, !forward);
         if(back_dist != -1 && back_dist < INF){
             ANS = min(ANS, back_dist + dist);
+            //Checking whetever connection exist
         }
         if(visited.get_dist(new_state, forward) == -1){
             if(forward)forward_Q.push({new_state, dist});
@@ -237,11 +237,13 @@ public:
 
 
         //with Q sizes or not?
+        //Im using heuristics to go from the smaller side
+        //In bad scenario it should automatically switch to bfs
         while(!forward_Q.empty()){ 
             //after forward_Q is empty, we have been it all important states
-            if(ANS >= INF && back_size < front_size && !backward_Q.empty()){
+            //if ANS is known, so there exist connection, so we only need to process current forward layer
+            if(ANS >= INF && back_size + backward_Q.size() < front_size + forward_Q.size() && !backward_Q.empty()){
                 back_size++;
-                //if(back_size > 1000)front_size = 0;
                 state = backward_Q.front().first;
                 dist = backward_Q.front().second;
                 if(dist != old_dist1 && ANS < INF){
@@ -249,12 +251,6 @@ public:
                 }
                 old_dist1 = dist;
                 backward_Q.pop();
-
-                //visited.backward_insert(state, dist);
-
-                // cout << "BACKWARD: " << dist << '\n';
-                // for(int i = 0; i < n; i++)cout << state[i] << ' ';
-                // cout << '\n';
                 
                 int forward_dist = visited.forward_get_dist(state);
                 if(forward_dist != -1 && forward_dist < INF){
@@ -264,7 +260,6 @@ public:
             }
             else {
                 front_size++;
-                //if(front_size > 2000)back_size = 0;
                 state = forward_Q.front().first;
                 dist = forward_Q.front().second;
                 if(dist != old_dist2 && ANS < INF){
@@ -272,12 +267,6 @@ public:
                 }
                 old_dist2 = dist;
                 forward_Q.pop();
-
-                //visited.forward_insert(state, dist);
-
-                // cout << "FORWARD: " << dist << '\n';
-                // for(int i = 0; i < n; i++)cout << state[i] << ' ';
-                // cout << '\n';
 
                 if(state == Y)return dist;
 
@@ -294,3 +283,116 @@ public:
         return run_mtm();
     }
 };
+
+
+//Im checking cases, where each yi is full or empty
+//so the result is just number of non-empty glasses
+int simple_check(int n, vector<int>& X, vector<int>& Y){
+    bool simple_case = true;
+    int res = 0;
+    for(int i = 0; i < n; i++){
+        if(Y[i] == 0)continue;
+        if(Y[i] == X[i]){
+            res++;
+            continue;
+        }
+        simple_case = false;
+        break;
+    }
+    if(simple_case){
+        return res;
+    }
+    return -1;
+}
+
+//bucket sort at the beginning
+inline void sort_XY(int &n, vector<int>& X, vector<int>& Y){
+    vector<pair<int, int>> XY(n, {0, 0});
+    for(int i = 0; i < n; i++)
+        XY[i] = {X[i], Y[i]};
+    sort(XY.begin(), XY.end());
+    for(int i = 0; i < n; i++){
+        X[i] = XY[i].first;
+        Y[i] = XY[i].second;
+    }
+}
+
+inline void read_data(int &n, vector<int>& X, vector<int>& Y){
+    cin >> n;
+    assert(0 <= n);
+
+    int x, y;
+    for(int i = 0; i < n; i++){
+        cin >> x >> y;
+        assert(0 <= y && y <= x);
+        //if x = 0 the glass is not interesting - it doesnt change anything
+        if(x != 0){
+            X.push_back(x);
+            Y.push_back(y);
+        }
+    }
+    n = (int)X.size();
+    sort_XY(n, X, Y);
+    //I can sort X, Y in buckets
+}
+inline int nwd(int a, int b){
+    if(a < b)swap(a, b);
+    while(b > 0){
+        a = a % b;
+        swap(a, b);
+    }
+    return a;
+}
+//Observation - in each operation we have that level of water in each glass
+//is divisible by nwd{xi}, so if any yi is not divisible by nwd{xi}
+//the answer must be -1
+//to compress the data i will also divide all variables by nwd{xi}
+//because it doesnt change the result
+inline bool nwd_check(int n, vector<int>& X, vector<int>& Y){
+    assert(n > 0);
+    int x_nwd = 0;
+    for(int i = 0; i < n; i++){
+        x_nwd = nwd(X[i], x_nwd);
+    }
+    for(int i = 0; i < n; i++){
+        if(Y[i] % x_nwd != 0) return false;
+        Y[i] /= x_nwd;
+        X[i] /= x_nwd;
+    }
+    return true;
+}
+//Another thing that doesnt change while performing operations is that
+//always there's at least one full or empty glass
+//so if for all yi we have 0 < yi < xi, then answer is -1
+inline bool full_empty_check(int n, vector<int>& X, vector<int>& Y){
+    for(int i = 0; i < n; i++){
+        if(Y[i] == 0 || Y[i] == X[i])return true;
+    }
+    return false;
+}
+inline bool check_conditions(int n, vector<int>& X, vector<int>& Y){
+    return nwd_check(n, X, Y) && full_empty_check(n, X, Y);
+}
+inline int solve(int n, vector<int>& X, vector<int>& Y){
+    if(n == 0)return 0;
+    if(!check_conditions(n, X, Y))return -1;
+
+    int simple_res = simple_check(n, X, Y);
+    if(simple_res != -1)return simple_res;
+
+    map_mtm mtm(n, X, Y);
+    return mtm.get_result();
+}
+int main(){
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+
+    int n;
+    vector<int> X, Y;
+
+    read_data(n, X, Y);
+
+    cout << solve(n, X, Y) << '\n';
+
+    return 0;
+}
