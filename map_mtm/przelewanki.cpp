@@ -12,7 +12,7 @@ using namespace std;
 
 //Meet in the middle implementation - parrarel bfs from start and end
 
-const int back_timeout = 1e8;
+const long long back_timeout = 12e6; //48MB
 //if one operation on back exceed back_timeout
 //then I will switch from mitm to bfs
 
@@ -192,11 +192,12 @@ public:
                 new_state[j] = min(X[j], state[i] + state[j]);
                 new_state[i] = state[i] + state[j] - new_state[j];
                 push_to_queue(state, new_state, dist + 1, i, j, true);
-             }
+            }
         }
     }
+    long long operations_counter = 0;
     inline void propagate_backwards(vector<int>& new_state, const vector<int>& state, const int dist){
-        int operations_counter = 0;
+        
         new_state = state;
         for(int i = 0; i < n; i++){
             if(state[i] == 0){
@@ -204,7 +205,7 @@ public:
                 for(int prev_y = 1; prev_y <= X[i]; prev_y++){
                     new_state[i] = prev_y;
                     push_to_queue(state, new_state, dist + 1, i, false);
-                    operations_counter++;
+                    operations_counter += n;
                 }
             }
             else if(state[i] == X[i]){
@@ -212,7 +213,7 @@ public:
                 for(int prev_y = 0; prev_y < X[i]; prev_y++){
                     new_state[i] = prev_y;
                     push_to_queue(state, new_state, dist + 1, i, false);
-                    operations_counter++;
+                    operations_counter += n;
                 }
             }
         }
@@ -225,9 +226,10 @@ public:
                     new_state[i] = state[i] + v; 
                     new_state[j] = state[j] - v;
                     push_to_queue(state, new_state, dist + 1, i, j, false);
-                    operations_counter++;
+                    operations_counter += n;
                     if(operations_counter > back_timeout){
                         do_mtm = false;
+                        //cerr << "BREAK!";
                         return;
                     }
                 }
