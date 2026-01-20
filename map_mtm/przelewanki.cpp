@@ -10,6 +10,12 @@
 
 using namespace std;
 
+//Meet in the middle implementation - parrarel bfs from start and end
+
+const int back_timeout = 1e8;
+//if one operation on back exceed back_timeout
+//then I will switch from mitm to bfs
+
 //By bucket I will understand a block of indexes,
 //where for each i, j in it we have X[i] == X[j] and Y[i] == Y[j]
 //in case of bigger size buckets we can optimize number of states
@@ -190,6 +196,7 @@ public:
         }
     }
     inline void propagate_backwards(vector<int>& new_state, const vector<int>& state, const int dist){
+        int operations_counter = 0;
         new_state = state;
         for(int i = 0; i < n; i++){
             if(state[i] == 0){
@@ -197,6 +204,7 @@ public:
                 for(int prev_y = 1; prev_y <= X[i]; prev_y++){
                     new_state[i] = prev_y;
                     push_to_queue(state, new_state, dist + 1, i, false);
+                    operations_counter++;
                 }
             }
             else if(state[i] == X[i]){
@@ -204,6 +212,7 @@ public:
                 for(int prev_y = 0; prev_y < X[i]; prev_y++){
                     new_state[i] = prev_y;
                     push_to_queue(state, new_state, dist + 1, i, false);
+                    operations_counter++;
                 }
             }
         }
@@ -216,6 +225,11 @@ public:
                     new_state[i] = state[i] + v; 
                     new_state[j] = state[j] - v;
                     push_to_queue(state, new_state, dist + 1, i, j, false);
+                    operations_counter++;
+                    if(operations_counter > back_timeout){
+                        do_mtm = false;
+                        return;
+                    }
                 }
             }
         }
@@ -242,7 +256,8 @@ public:
         while(!forward_Q.empty()){ 
             //after forward_Q is empty, we have been it all important states
             //if ANS is known, so there exist connection, so we only need to process current forward layer
-            if(ANS >= INF && back_size + backward_Q.size() < front_size + forward_Q.size() && !backward_Q.empty()){
+            //if operations on the back exceeds backward_timeout, Im switching to standard bfs (do_mtm condition)
+            if(do_mtm && ANS >= INF && back_size + backward_Q.size() < front_size + forward_Q.size() && !backward_Q.empty()){
                 back_size++;
                 state = backward_Q.front().first;
                 dist = backward_Q.front().second;
