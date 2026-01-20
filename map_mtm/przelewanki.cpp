@@ -12,7 +12,7 @@ using namespace std;
 
 //Meet in the middle implementation - parrarel bfs from start and end
 
-const long long back_timeout = 12e6; //48MB
+const long long back_timeout = 10e6; //40MB
 //if one operation on back exceed back_timeout
 //then I will switch from mitm to bfs
 
@@ -276,6 +276,9 @@ public:
                 propagate_backwards(new_state, state, dist);
             }
             else {
+                while(!do_mtm && !backward_Q.empty()){
+                    backward_Q.pop();
+                }
                 front_size++;
                 state = forward_Q.front().first;
                 dist = forward_Q.front().second;
